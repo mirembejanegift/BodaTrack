@@ -147,3 +147,36 @@ class AuditLog(models.Model):
 
     class Meta:
         ordering = ("-created_at", "-id")
+
+
+class SmsLog(models.Model):
+    """Outbound SMS queue. Messages are queued inside payment transactions and
+    only leave the system when `python manage.py send_sms` flushes the queue,
+    so a recorded payment can never lose its thank-you receipt SMS."""
+
+    class Kind(models.TextChoices):
+        REMINDER = "reminder", "Payment reminder"
+        RECEIPT = "receipt", "Thank-you receipt"
+
+    class Status(models.TextChoices):
+        QUEUED = "queued", "Queued"
+        SENT = "sent", "Sent"
+        FAILED = "failed", "Failed"
+
+    rider = models.ForeignKey("Rider", on_delete=models.PROTECT, related_name="sms_messages")
+    agreement = models.ForeignKey(OwnershipAgreement, null=True, blank=True,
+        on_delete=models.PROTECT, related_name="sms_messages")
+    payment = models.ForeignKey(Payment, null=True, blank=True,
+        on_delete=models.PROTECT, related_name="sms_messages")
+    phone_number = models.CharField(max_length=30)
+    body = models.TextField()
+    kind = models.CharField(max_length=20, choices=Kind.choices)
+    # The day a reminder is "for" — lets the daily job run idempotently.
+    for_date = models.DateField(null=True, blank=True)
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.QUEUED)
+    error = models.TextField(blank=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-created_at", "-id")

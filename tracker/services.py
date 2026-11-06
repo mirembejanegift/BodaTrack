@@ -9,7 +9,7 @@ from django.db import transaction
 from django.db.models import F, OuterRef, Subquery, Sum
 from django.utils import timezone
 
-from .models import AuditLog, OwnershipAgreement, Payment, PaymentAllocation, WeeklyInstalment
+from .models import AuditLog, OwnershipAgreement, Payment, PaymentAllocation, SmsLog, WeeklyInstalment
 
 ZERO = Decimal("0.00")
 
@@ -130,6 +130,13 @@ def record_payment(*, agreement, amount, paid_at, method, receipt_number, refere
             "reference": reference, "agreement_id": agreement.pk,
         },
     )
+    # Queue the thank-you SMS inside the same transaction so it can never be
+    # forgotten; a later `send_sms` run delivers it through the gateway.
+    from . import sms as sms_mod
+    sms_mod.queue_message(
+        rider=agreement.rider, body=sms_mod.receipt_body(payment),
+        kind=SmsLog.Kind.RECEIPT, agreement=agreement, payment=payment,
+    )
     return payment
 
 
@@ -202,3 +209,39 @@ def approve_legal_transfer(agreement, *, actor, approval_date):
     AuditLog.objects.create(action="legal_transfer_approved", entity_type="OwnershipAgreement", entity_id=agreement.pk,
                             actor=actor, details={"approval_date": approval_date.isoformat()})
     return agreement
+
+
+def queue_weekly_reminders(as_of=None):
+    """Queue one arrears reminder SMS per active agreement per day.
+
+    Idempotent: running it twice on the same day does not duplicate messages,
+    so a scheduled task can call it safely every morning.
+    """
+    from . import sms as sms_mod
+
+    as_of = as_of or timezone.localdate()
+    created = []
+    active = OwnershipAgreement.objects.filter(
+        status=OwnershipAgreement.Status.ACTIVE,
+    ).select_related("rider", "motorcycle")
+    for agreement in active:
+        arrears = calculate_arrears(agreement, as_of)
+        if arrears <= ZERO:
+            continue
+        already_told = SmsLog.objects.filter(
+            agreement=agreement,
+            kind=SmsLog.Kind.REMINDER,
+            status__in=[SmsLog.Status.QUEUED, SmsLog.Status.SENT],
+            for_date=as_of,
+        ).exists()
+        if already_told:
+            continue
+        next_due = agreement.instalments.filter(
+            status__in=[WeeklyInstalment.Status.SCHEDULED, WeeklyInstalment.Status.PARTIAL],
+        ).order_by("due_date").values_list("due_date", flat=True).first()
+        created.append(sms_mod.queue_message(
+            rider=agreement.rider,
+            body=sms_mod.reminder_body(agreement, arrears, next_due),
+            kind=SmsLog.Kind.REMINDER, agreement=agreement, for_date=as_of,
+        ))
+    return created
