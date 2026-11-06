@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
 import api from "./api.js";
 import Login from "./pages/Login.jsx";
+import Dashboard from "./pages/Dashboard.jsx";
 
-const NAV_ITEMS = [];
+const NAV_ITEMS = [
+  { key: "dashboard", label: "Dashboard" },
+];
 
 export default function App() {
   const [user, setUser] = useState(undefined); // undefined = checking, null = logged out
+  const [view, setView] = useState({ page: "dashboard" });
 
   useEffect(() => {
     api.get("/auth/me/")
@@ -34,7 +38,13 @@ export default function App() {
         </div>
         <nav>
           {NAV_ITEMS.map((item) => (
-            <button key={item.key} className="nav-item">{item.label}</button>
+            <button
+              key={item.key}
+              className={`nav-item${view.page === item.key ? " active" : ""}`}
+              onClick={() => setView({ page: item.key })}
+            >
+              {item.label}
+            </button>
           ))}
         </nav>
         <div className="sidebar-footer">
@@ -43,8 +53,7 @@ export default function App() {
         </div>
       </aside>
       <main className="content">
-        <h1>Welcome, {user.full_name || user.username} 👋</h1>
-        <p className="muted">Bookkeeping pages arrive in the next commits.</p>
+        {view.page === "dashboard" && <Dashboard onOpenAgreement={(id) => setView({ page: "agreement", id })} />}
       </main>
     </div>
   );
