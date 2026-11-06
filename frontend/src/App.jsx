@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import api from "./api.js";
 import Login from "./pages/Login.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
+import Agreements from "./pages/Agreements.jsx";
 
 const NAV_ITEMS = [
   { key: "dashboard", label: "Dashboard" },
+  { key: "agreements", label: "Agreements" },
 ];
 
 export default function App() {
@@ -54,6 +56,7 @@ export default function App() {
       </aside>
       <main className="content">
         {view.page === "dashboard" && <Dashboard onOpenAgreement={(id) => setView({ page: "agreement", id })} />}
+        {view.page === "agreements" && <Agreements onOpenAgreement={(id) => setView({ page: "agreement", id })} />}
       </main>
     </div>
   );
