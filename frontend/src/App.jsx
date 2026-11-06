@@ -1,13 +1,20 @@
 import { useEffect, useState } from "react";
 import api from "./api.js";
 import Login from "./pages/Login.jsx";
+import Login from "./pages/Login.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import AgreementDetail from "./pages/AgreementDetail.jsx";
 import Agreements from "./pages/Agreements.jsx";
+import Riders from "./pages/Riders.jsx";
+import Motorcycles from "./pages/Motorcycles.jsx";
+import Audit from "./pages/Audit.jsx";
 
 const NAV_ITEMS = [
   { key: "dashboard", label: "Dashboard" },
   { key: "agreements", label: "Agreements" },
+  { key: "riders", label: "Riders" },
+  { key: "motorcycles", label: "Motorcycles" },
+  { key: "audit", label: "Audit log" },
 ];
 
 export default function App() {
@@ -59,6 +66,9 @@ export default function App() {
         {view.page === "dashboard" && <Dashboard onOpenAgreement={(id) => setView({ page: "agreement", id })} />}
         {view.page === "agreements" && <Agreements onOpenAgreement={(id) => setView({ page: "agreement", id })} />}
         {view.page === "agreement" && <AgreementDetail id={view.id} onBack={() => setView({ page: "agreements" })} />}
+        {view.page === "riders" && <Riders />}
+        {view.page === "motorcycles" && <Motorcycles />}
+        {view.page === "audit" && <Audit />}
       </main>
     </div>
   );
