@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "./api.js";
 import Login from "./pages/Login.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
+import AgreementDetail from "./pages/AgreementDetail.jsx";
 import Agreements from "./pages/Agreements.jsx";
 
 const NAV_ITEMS = [
@@ -57,6 +58,7 @@ export default function App() {
       <main className="content">
         {view.page === "dashboard" && <Dashboard onOpenAgreement={(id) => setView({ page: "agreement", id })} />}
         {view.page === "agreements" && <Agreements onOpenAgreement={(id) => setView({ page: "agreement", id })} />}
+        {view.page === "agreement" && <AgreementDetail id={view.id} onBack={() => setView({ page: "agreements" })} />}
       </main>
     </div>
   );
