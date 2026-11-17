@@ -133,11 +133,23 @@ def record_payment(*, agreement, amount, paid_at, method, receipt_number, refere
     # Queue the thank-you SMS inside the same transaction so it can never be
     # forgotten; a later `send_sms` run delivers it through the gateway.
     from . import sms as sms_mod
-    sms_mod.queue_message(
+    log = sms_mod.queue_message(
         rider=agreement.rider, body=sms_mod.receipt_body(payment),
         kind=SmsLog.Kind.RECEIPT, agreement=agreement, payment=payment,
     )
+    # Deliver immediately once the transaction commits so the rider gets the
+    # thank-you right away; if the gateway is unreachable the log row keeps
+    # the failure and a later `send_sms` run retries it.
+    transaction.on_commit(lambda: _deliver_now(log.pk))
     return payment
+
+
+def _deliver_now(log_pk):
+    from . import sms as sms_mod
+    try:
+        sms_mod.send_message(SmsLog.objects.get(pk=log_pk))
+    except Exception:  # noqa: BLE001 — failure already recorded on the SmsLog row
+        pass
 
 
 @transaction.atomic
