@@ -16,6 +16,7 @@ import json
 import os
 import urllib.error
 import urllib.request
+from urllib.parse import urlencode
 
 from django.utils import timezone
 
@@ -80,23 +81,25 @@ class _AfricasTalkingBackend:
     def send(self, log):
         username = os.environ.get("AFRICAS_TALKING_USERNAME", "")
         api_key = os.environ.get("AFRICAS_TALKING_API_KEY", "")
-        sender = os.environ.get("AFRICAS_TALKING_SENDER_ID", "AFRICASTKNG")
+        sender = os.environ.get("AFRICAS_TALKING_SENDER_ID", "")
         if not username or not api_key:
             raise RuntimeError(
                 "AFRICAS_TALKING_USERNAME and AFRICAS_TALKING_API_KEY must be set in .env."
             )
-        payload = json.dumps({
+        fields = {
             "username": username,
-            "to": [log.phone_number],
+            "to": log.phone_number,
             "message": log.body,
-            "from": sender,
-        }).encode()
+        }
+        if sender:  # only send 'from' when an approved sender ID is configured
+            fields["from"] = sender
+        payload = urlencode(fields).encode()
         request = urllib.request.Request(
             "https://api.africastalking.com/version1/messaging",
             data=payload,
             headers={
                 "apiKey": api_key,
-                "Content-Type": "application/json",
+                "Content-Type": "application/x-www-form-urlencoded",
                 "Accept": "application/json",
             },
             method="POST",

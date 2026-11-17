@@ -22,8 +22,16 @@ class Command(BaseCommand):
             raise CommandError("Use the format +2567XXXXXXXX (13 characters).")
 
         backend = _backend()
+        from tracker.models import Rider
+        rider = Rider.objects.filter(phone_number=to).first()
+        if rider is None:
+            raise CommandError(
+                "That number does not belong to any rider on record. "
+                "The test SMS must go to a number saved on a rider (so the "
+                "message can be logged against them)."
+            )
         log = SmsLog.objects.create(
-            phone_number=to,
+            rider=rider, phone_number=to,
             body="BodaTrack test message: SMS is working! 🎉",
             kind=SmsLog.Kind.RECEIPT,  # generic outbound; logged like any SMS
             status=SmsLog.Status.QUEUED,
