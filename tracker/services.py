@@ -232,6 +232,8 @@ def queue_weekly_reminders(as_of=None):
     from . import sms as sms_mod
 
     as_of = as_of or timezone.localdate()
+    # Refresh overdue flags first so reminders and "next due" reflect today.
+    update_overdue_instalments(as_of)
     created = []
     active = OwnershipAgreement.objects.filter(
         status=OwnershipAgreement.Status.ACTIVE,
